@@ -1,0 +1,49 @@
+services:
+  s3:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${S3_ROOT_PASSWORD}
+    volumes:
+      - .tmp/minio/data:/export
+    command: server /export --console-address ":9001"
+
+  mc:
+    depends_on:
+      - s3
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    entrypoint: []
+    environment:
+      S3_ROOT_USER: ${S3_ROOT_USER}
+      S3_ROOT_PASSWORD: ${S3_ROOT_PASSWORD}
+    # 事前に my-bucket を作成しておく
+    command: >
+      /bin/sh -c "
+      until (mc config host add s3 http://s3:9000 $S3_ROOT_USER $S3_ROOT_PASSWORD) do sleep 1; done;
+      mc mb s3/my-bucket;
+      exit 0;
+      "
+
+  tus:
+    image: tusproject/tusd:sha-76aeb6b
+    volumes:
+      - .tmp/tusd:/data
+    ports:
+      - "8080:8080"
+    environment:
+      AWS_REGION: "ap-northeast-1" # S3互換ストレージにアップロードする際に必須。(ローカル環境では値は何でもOK)
+      AWS_ACCESS_KEY_ID_FILE: /run/secrets/aws-access-key-id
+      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/aws-secret-access-key
+    secrets:
+      - aws-access-key-id
+      - aws-secret-access-key
+    command: -verbose -s3-bucket my-bucket -s3-endpoint http://s3:9000
+
+secrets:
+  aws-access-key-id:
+    environment: S3_ROOT_USER
+  aws-secret-access-key:
+    environment: S3_ROOT_PASSWORD
