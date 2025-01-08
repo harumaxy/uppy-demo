@@ -1,0 +1,5 @@
+[env]
+S3_ROOT_USER = "minio"
+S3_ROOT_PASSWORD = "minio123"
+S3_ENDPOINT = "http://localhost:9000"
+S3_BUCKET = "my-bucket"
