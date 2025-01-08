@@ -11,7 +11,7 @@ import "@uppy/dashboard/dist/style.min.css";
 
 const server = edenTreaty<Server>("http://localhost:8000");
 
-const uppy = new Uppy({})
+const uppy = new Uppy()
   .use(Dashboard, {
     inline: true,
     target: "#app",
@@ -60,6 +60,23 @@ const uppy = new Uppy({})
       });
       if (res.error) throw new Error(res.error.message);
       return res.data;
+    },
+
+    async abortMultipartUpload(_file, { key, uploadId }) {
+      const res = await server.uppy["s3-multipart"][uploadId].delete({
+        key,
+      });
+      if (res.error) throw new Error(res.error.message);
+      return;
+    },
+
+    async completeMultipartUpload(_file, { key, uploadId, parts }) {
+      const res = await server.uppy["s3-multipart"][uploadId].complete.post({
+        key,
+        parts,
+      });
+      if (res.error) throw new Error(res.error.message);
+      return { location: res.data.location };
     },
   });
 
